@@ -1,0 +1,75 @@
+library -> functions* -> end of file
+function -> identifier (name) -> identifier* (arguments) -> : -> statement
+
+statement:
+	{ statement* }
+	if expression statement
+	while expression statement
+	return expression ;
+	let identifier:
+		= expression;
+		;
+		:= expression;
+	expression ;
+	;
+
+expression:
+	int literal
+	string literal
+	identifier	//literals
+	(expression)
+	expression[expression] //indexing
+	expression(expression,*) //function call
+	unary  expressions:
+		& expression
+		* expression
+		- expression
+		! expression	
+	binary expressions:
+		expression = expression
+		expression + expression
+		expression - expression
+		expression * expression
+		expression / expression
+		expression & expression
+		expression ** expression
+		expression == expression
+		expression != expression
+		expression || expression
+		expression && expression
+		expression += expression
+		expression -= expression
+	tetnary expression:
+		expression?expression:expression
+
+tokens:
+	identifier
+	integer/string literal
+	if 
+	while
+	return
+	let
+	(
+	)
+	[
+	]
+	{
+	}
+	,
+	;
+	:
+	?
+	+
+	-
+	&
+	*
+	=
+	+=
+	-=
+	!
+	&&
+	||
+	++
+	--
+	!=
+	==

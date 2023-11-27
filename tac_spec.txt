@@ -1,0 +1,76 @@
+sp -> stack pointer
+bp -> stack register
+
+
+
+NOP
+no operation
+
+mov r0, literal
+mov to r0, the value literal
+
+init R0, symbol, literal
+move to R0, *(symbol + literal)
+
+add R0, R1, R2
+move to R0, R1 + R2
+
+and R0, R1, R2
+move to R0, the value R1 && R2
+
+or R0, R1, R2
+move to R0, the value R1 || R2
+
+not R0, R1
+move to R0, the value !R1
+
+xor R0, R1, R2
+move to R0, the value R1 ^ R2
+
+neg R0, R1
+move to R0, -R1
+
+copy R0, R1
+move to R0 the value from R1
+
+mul R0, R1, R2
+move to R0, R1 * R2
+
+div R0, R1, R2
+move to R0, R1 / R2
+
+mod R0, R1, R2
+move to R0, R1 % R2
+
+read R0, R1
+move to R0, *R1
+
+write R0, R1
+move to *R0, R1
+
+neq R0, R1, R2
+move to R0, R1 != R2
+
+eq R0, R1, R2
+move to R0, R1 == R2
+
+ifnz R0, lable
+if R0 != 0 jump to lable
+
+setb R0, R1, R2
+set R0 to R1 < R2
+
+setbe R0, R1, R2
+set R0 to R1 <= R2
+
+jmp lable
+jump to lable
+
+push R0
+push R0 to the stack
+
+fcall R0, L0, R1..RN
+move to R0, the result of the function at L0, using the variables [0,1,2...] that start at R1 up to RN
+
+ret R0
+return the result in R0
