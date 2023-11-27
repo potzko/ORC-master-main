@@ -20,7 +20,7 @@ spec = [
     (r"(\+|-) "                  , 'op_+'),
     (r"(\*|\/|\%) "              , 'op_*'),
     (r"(<=|>=|==|!=|\|\||&&) "   , 'op_<'),
-    (r"(<|>|\^) "                   , 'op_<'),
+    (r"(<|>|\^) "                , 'op_<'),
     (r"(=) "                     , 'op_='),
 
     # unary ops
@@ -50,7 +50,7 @@ spec = [
     (r"([a-zA-Z_][a-zA-Z_0-9]*)\(", 'function_call'),
 
     # identifier
-    (r"([a-zA-Z_][a-zA-Z_0-9]*)", 'identifier'),
+    (r"([a-zA-Z_][a-zA-Z_0-9]*)"  , 'identifier'),
 ]
 
 class tokenizer:

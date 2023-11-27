@@ -25,6 +25,10 @@ class compiler:
         self.Neg = self._construct('neg', 1)
         self.Not = self._construct('not', 1)
 
+        self.Push = self._construct('push', 1)
+        self.Pop = self._construct('pop', 1)
+        self.Call = self._construct('call', 1)
+
         self.Ret = self._construct('ret', 0)
 
 
@@ -46,13 +50,17 @@ class compiler:
         return self.get(var)
 
     def free_all_reg(self):
-        self.regs = ['r8', 'r9', 'r10', 'r11', 'rcx']
+        self.regs = ['r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'rcx']
+    
+    def input_regs(self, num):
+        return ['rcx', 'rdx', 'rd8', 'rd9'][:num]
 
     def aloc_reg(self):
         return self.regs.pop()
     
-    def free_reg(self, reg):
-        self.regs.append(reg)
+    def free_reg(self, *args):
+        for reg in args:
+            self.regs.append(reg)
 
     def compile(self, code):
         ret = '.code\n'
@@ -61,12 +69,16 @@ class compiler:
         for line in lines:
             tmp = line.split(' ')
             op, data = tmp[0], tmp[1:]
-            print(line, self.state)
+            print(line) #, self.state)
             match op:
                 case 'proc':
+                    self.free_all_reg()
                     ret += f'{data[0]} proc\n'
                     proc = data[0]
-                    self.free_all_reg()
+                    print(self.func_signatures[proc])
+                    for i, reg in enumerate(self.input_regs(self.func_signatures[proc])):
+                        ret += self.Mov(self.assign(f'@F{i}'), reg)
+                    
                 case 'endp':
                     ret += f'{data[0]} endp\n'
                     self.free_all_reg()
@@ -144,6 +156,18 @@ class compiler:
                     print('ret not implemented!')
                     ret += self.Mov('rax', self.get(data[0]))
                     ret += self.Ret()
+                case 'fcall':
+                    ret_reg, name, inputs = data[0], data[1], data[2:] 
+                    regs = [i for i in self.state.values()]
+                    for i in regs:
+                        ret += self.Push(i)
+                    for value, target in zip([self.get(i) for i in inputs] ,self.input_regs(self.func_signatures[name])):
+                        ret += self.Mov(target, value)
+                    ret += self.Call(name)
+                    for i in reversed(regs):
+                        ret += self.Pop(i)
+                    ret += self.Mov(self.assign(ret_reg), 'rax')
+                    print(regs)
                 case _:
                     if len(op) != 0:
                         match op[0]:
@@ -159,19 +183,19 @@ class compiler:
 def compile(code):
     ir_code, funcs = IR_compiler.compile(code)
     print(IR_compiler.format_code(ir_code[0]))
-    print(ir_code)
     #print(funcs)
     comp = compiler(funcs)
     return comp.compile(ir_code)
 
 
 code = """
-fn fibo: {
-    return 5;
-}
-fn main: {
-    
+fn fibo x: {
+    if x < 2 return x;
+    return fibo(x - 1) + fibo(x - 2);
 }
 """
 
-print('\n\n\n', compile(code))
+
+tmp = compile(code)
+print('\n\n\n')
+print(tmp)

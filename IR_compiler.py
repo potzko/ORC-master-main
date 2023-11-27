@@ -7,6 +7,7 @@ class ir:
         self.Mov = self._construct('mov', 2)
         self.Add = self._construct('add', 3)
         self.Sub = self._construct('sub', 3)
+        self.dec = self._construct('dec', 2)
         self.Mul = self._construct('mul', 3)
         self.Div = self._construct('div', 3)
         self.Mod = self._construct('mod', 3)
@@ -126,7 +127,7 @@ class ir:
                 ret += self.Ret(tmp)
 
             case  _:
-                ret += self.expression(self.create_tmp() ,node, scope)
+                ret += self.expression('@0' ,node, scope)
                 self.free_tmp()
 
         return ret
@@ -158,7 +159,6 @@ class ir:
                 tmp1 , tmp2 = self.create_tmp(), self.create_tmp()
                 ret += self.expression(tmp1, exp[1], scope)
                 ret += self.expression(tmp2, exp[2], scope)
-                ret += self.Neg(tmp2, tmp2)
                 ret += self.Sub(output_reg, tmp1, tmp2)
                 self.free_tmp(2)
             case '*':
@@ -207,7 +207,7 @@ class ir:
                 tmp1 , tmp2 = self.create_tmp(), self.create_tmp()
                 ret += self.expression(tmp1, exp[1], scope)
                 ret += self.expression(tmp2, exp[2], scope)
-                ret += self.Ge(output_reg, tmp2, tmp1)
+                ret += self.G(output_reg, tmp2, tmp1)
                 self.free_tmp(2)
             case '>':
                 tmp1 , tmp2 = self.create_tmp(), self.create_tmp()
@@ -219,7 +219,7 @@ class ir:
                 tmp1 , tmp2 = self.create_tmp(), self.create_tmp()
                 ret += self.expression(tmp1, exp[1], scope)
                 ret += self.expression(tmp2, exp[2], scope)
-                ret += self.G(output_reg, tmp2, tmp1)
+                ret += self.Ge(output_reg, tmp2, tmp1)
                 self.free_tmp(2)
             case '>=':
                 tmp1 , tmp2 = self.create_tmp(), self.create_tmp()
@@ -271,7 +271,7 @@ def compile(code):
     program, names = orc_parser.parser(code).program()
     ir_compiler = ir(names)
     ret = ir_compiler.function_list(program)
-    return ret, ([(i[0], len(i[1])) for i in ir_compiler.fn_table.values()])
+    return ret, {i[0]: len(i[1]) for i in ir_compiler.fn_table.values()}
 
     
 if __name__ == '__main__':
