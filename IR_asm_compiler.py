@@ -69,7 +69,7 @@ class compiler:
         for line in lines:
             tmp = line.split(' ')
             op, data = tmp[0], tmp[1:]
-            print(line) #, self.state)
+            print(line, self.state)
             match op:
                 case 'proc':
                     self.free_all_reg()
@@ -119,13 +119,13 @@ class compiler:
                     ret += self.Mov(a, 'rax')
                 case 'g':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
-                    self.Xor('rax', 'rax')
+                    ret += self.Xor('rax', 'rax')
                     ret += self.Cmp(b, c)
                     ret += self.Setg('al')
                     ret += self.Mov(a, 'rax')                
                 case 'ge':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
-                    self.Xor('rax', 'rax')
+                    ret += self.Xor('rax', 'rax')
                     ret += self.Cmp(b, c)
                     ret += self.Setge('al')
                     ret += self.Mov(a, 'rax')
@@ -182,7 +182,7 @@ class compiler:
                     
 def compile(code):
     ir_code, funcs = IR_compiler.compile(code)
-    print(IR_compiler.format_code(ir_code[0]))
+    print(IR_compiler.format_code(ir_code))
     #print(funcs)
     comp = compiler(funcs)
     return comp.compile(ir_code)
@@ -191,11 +191,13 @@ def compile(code):
 code = """
 fn fibo x: {
     if x < 2 return x;
-    return fibo(x - 1) + fibo(x - 2);
+    return fibo(x - 2) + fibo(x - 1);
 }
 """
 
-
-tmp = compile(code)
-print('\n\n\n')
-print(tmp)
+if __name__ == "__main__":
+    tmp = compile(code)
+    print('\n\n\n')
+    print(tmp)
+    import pyperclip
+    pyperclip.copy(tmp)

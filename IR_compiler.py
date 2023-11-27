@@ -2,7 +2,7 @@ import orc_parser
 
 class ir:
     def __init__(self, fn_names) -> None:
-        self.tmp_count = 0
+        self.tmp_count = -1
         self.lable_count = 0
         self.Mov = self._construct('mov', 2)
         self.Add = self._construct('add', 3)

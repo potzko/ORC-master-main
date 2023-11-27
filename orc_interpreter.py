@@ -2,12 +2,11 @@ import orc_parser
 
 code = """
 fn fibo x: {
-    if x < 2 
-        return x;
+    if x < 2 return x;
     return fibo(x - 1) + fibo(x - 2);
 }
 fn main:
-    print(fibo(25));
+    print(fibo(15));
 """
 
 parser = orc_parser.parser(code)
