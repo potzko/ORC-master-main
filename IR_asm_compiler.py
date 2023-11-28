@@ -13,8 +13,8 @@ class compiler:
         self.Xor = self._construct('xor', 2)
         self.And = self._construct('and', 2)
 
-        self.Mul = self._construct('mul', 1)
-        self.Div = self._construct('div', 1)
+        self.Mul = self._construct('imul', 1)
+        self.Div = self._construct('idiv', 1)
         self.Cmp = self._construct('cmp', 2)
         self.Jnz = self._construct('jnz', 1)
 
@@ -50,7 +50,8 @@ class compiler:
         return self.get(var)
 
     def free_all_reg(self):
-        self.regs = ['r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'rcx']
+        self.regs = ['r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15', 'rbx']
+        self.state = {}
     
     def input_regs(self, num):
         return ['rcx', 'rdx', 'rd8', 'rd9'][:num]
@@ -69,17 +70,18 @@ class compiler:
         for line in lines:
             tmp = line.split(' ')
             op, data = tmp[0], tmp[1:]
-            print(line, self.state)
+            print(line, '\n', self.state, '\n', self.regs)
             match op:
                 case 'proc':
                     self.free_all_reg()
                     ret += f'{data[0]} proc\n'
+                    ret += self.Push('rbx')
                     proc = data[0]
                     print(self.func_signatures[proc])
                     for i, reg in enumerate(self.input_regs(self.func_signatures[proc])):
                         ret += self.Mov(self.assign(f'@F{i}'), reg)
-                    
                 case 'endp':
+                    ret += self.Pop('rbx')
                     ret += f'{data[0]} endp\n'
                     self.free_all_reg()
                 case 'jmp':
@@ -135,19 +137,27 @@ class compiler:
                     ret += self.And(a, c)
                 case 'mul':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
+                    ret += self.Push('rdx')
                     ret += self.Mov('rax', b)
                     ret += self.Mul(c)
                     ret += self.Mov(a, 'rax')
+                    ret += self.Pop('rdx')
                 case 'div':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
+                    ret += self.Push('rdx')
+                    ret += self.Xor('rdx', 'rdx')
                     ret += self.Mov('rax', b)
                     ret += self.Div(c)
                     ret += self.Mov(a, 'rax')
+                    ret += self.Pop('rdx')
                 case 'mod':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
+                    ret += self.Push('rdx')
+                    ret += self.Xor('rdx', 'rdx')
                     ret += self.Mov('rax', b)
                     ret += self.Div(c)
                     ret += self.Mov(a, 'rdx')
+                    ret += self.Pop('rdx')
                 case 'ifnz':
                     a = self.assign(data[0])
                     ret += self.Cmp(a, '0')
@@ -155,6 +165,7 @@ class compiler:
                 case 'ret':
                     print('ret not implemented!')
                     ret += self.Mov('rax', self.get(data[0]))
+                    ret += self.Pop('rbx')
                     ret += self.Ret()
                 case 'fcall':
                     ret_reg, name, inputs = data[0], data[1], data[2:] 
@@ -192,6 +203,22 @@ code = """
 fn fibo x: {
     if x < 2 return x;
     return fibo(x - 2) + fibo(x - 1);
+}
+fn is_prime num: {
+    if num < 2 return false;
+    let a = 2;
+    while a < num / 2 {
+        if num % a == 0 return false;
+        a = a + 1;
+    }
+    return true;
+}
+fn power a, b: {
+    if b == 0 return 1;
+    let pow_tmp = power(a, b / 2);
+    let remainder_tmp = 1;
+    if b % 2 == 1 remainder_tmp = a;
+    return pow_tmp * pow_tmp * remainder_tmp;
 }
 """
 
