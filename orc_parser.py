@@ -18,7 +18,7 @@ class parser:
     def program(self):
         ret = self.function_decleration_block()
         fn_names = [(i[1], i[2]) for i in ret[1:]]
-        return (ret, fn_names)
+        return [ret, fn_names]
     
     def function_decleration_block(self):
         ret = ['fn_block']
@@ -31,7 +31,7 @@ class parser:
         name = self.identifier()
         if self.lookahead[0] == ':':
             self.eat(':')
-            return ('fn', name, tuple(), self.statement())
+            return ['fn', name, tuple(), self.statement()]
         delimiter  = ':'
         if self.lookahead[0] == '(':
             self.eat('(')
@@ -44,7 +44,7 @@ class parser:
             self.eat(')')
         self.eat(':')
 
-        return ('fn', name, variables, self.statement())
+        return ['fn', name, variables, self.statement()]
 
     def statement(self):
         match self.lookahead[0]:
@@ -60,7 +60,7 @@ class parser:
         self.eat('return')
         exp = self.expression()
         self.eat(';')
-        return ('return', exp)
+        return ['return', exp]
 
     def let_statement(self):
         self.eat('let')
@@ -68,10 +68,10 @@ class parser:
         match self.lookahead[0]:
             case ';':
                 self.eat(';')
-                return ('let', id, ('literal_num', '0'))
+                return ['let', id, ('literal_num', '0')]
             case 'op_=':
                 self.eat('op_=')
-                return ('let', id, self.expression_statement())
+                return ['let', id, self.expression_statement()]
 
 
     def block_statement(self):
@@ -90,8 +90,8 @@ class parser:
         ret = self.conditional_statement('if')
         if self.lookahead[0] == 'else':
             self.eat('else')
-            return (*ret, self.statement())
-        return (*ret, ())
+            return [*ret, self.statement()]
+        return [*ret, ()]
 
     def while_statement(self):
         return self.conditional_statement('while')
@@ -100,7 +100,7 @@ class parser:
         self.eat(token_type)
         condition = self.expression()
         block = self.statement()
-        return (token_type, condition, block)
+        return [token_type, condition, block]
 
     def empty_statement(self):
         self.eat(';')
@@ -113,7 +113,7 @@ class parser:
     
     def unary_expression(self):
         if self.lookahead[0] == 'unary_op':
-            return ('unary_op', self.eat('unary_op'), self.unary_expression())
+            return ['unary_op', self.eat('unary_op'), self.unary_expression()]
         return self.single_expression()
 
     def expression(self):
@@ -130,7 +130,7 @@ class parser:
             case 'function_call'    : return self.function_call()
 
     def function_call(self):
-        ret = ('call', self.eat('function_call'), self.comma_expression())
+        ret = ['call', self.eat('function_call'), self.comma_expression()]
         self.eat(')')
         return ret
 
@@ -169,7 +169,7 @@ class parser:
         while self.lookahead[0] == op_token:
             operator = self.eat(op_token)
             right = op_type()
-            left = (operator, left, right)
+            left = [operator, left, right]
         return left
 
     def literal(self):
@@ -177,12 +177,12 @@ class parser:
             raise Exception(f"expected literal found {self.lookahead[0]}")
         match self.lookahead[0]:
             case 'literal_boolean':
-                return ('literal_num', 1 if self.eat('literal_boolean') == 'true' else 0)
+                return ['literal_num', 1 if self.eat('literal_boolean') == 'true' else 0]
             case 'literal_string':
                 return self.eat('literal_string')
             case 'literal_num':
                 num = self.eat('literal_num')
-                return ('literal_num', num)
+                return ['literal_num', num]
             case _:
                 raise Exception(f"expected literal found {self.lookahead[0]}")
 
@@ -199,6 +199,6 @@ def pprint(ast):
     import json
     print(json.dumps(ast, indent=4))
 if __name__ == '__main__':
-    p = parser(code=code)
-    print(p.program())
+    p = parser(code)
+    pprint(p.program()[0])
 

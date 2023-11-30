@@ -1,10 +1,14 @@
 import orc_parser
+import ast_optimizer
 
 class ir:
     def __init__(self, fn_names) -> None:
         self.tmp_count = -1
         self.lable_count = 0
         self.Mov = self._construct('mov', 2)
+        self.Lea = self._construct('lea', 2)
+        self.Read = self._construct('read', 2)
+        self.Write = self._construct('write', 2)
         self.Add = self._construct('add', 3)
         self.Sub = self._construct('sub', 3)
         self.dec = self._construct('dec', 2)
@@ -149,6 +153,11 @@ class ir:
                 ret += self.expression(tmp, exp[2], scope)
                 ret += self.Mov(scope[exp[1][1]], tmp)
                 self.free_tmp()
+            case ':=':
+                tmp = self.create_tmp()
+                ret += self.expression(tmp, exp[2], scope)
+                ret += self.Write(scope[exp[1][1]], tmp)
+                self.free_tmp()
             case '+':
                 tmp1 , tmp2 = self.create_tmp(), self.create_tmp()
                 ret += self.expression(tmp1, exp[1], scope)
@@ -238,9 +247,17 @@ class ir:
             #unary expressions
             case "unary_op":
                 match exp[1]:
-                    case '+': ret += self.Nop()
+                    case '+': ret += self.expression(output_reg, exp[2], scope)
                     case '-': ret += self.expression(output_reg, exp[2], scope) + self.Neg(output_reg, output_reg)
                     case '!': ret += self.expression(output_reg, exp[2], scope) + self.Not(output_reg, output_reg)
+                    case '&': 
+                        ret += self.expression(t:= self.create_tmp(), exp[2], scope) + self.Lea(output_reg, t)
+                        self.free_tmp()
+                    case '*': 
+                        tmp = self.create_tmp()
+                        ret += self.expression(tmp, exp[2], scope)
+                        ret += self.Read(output_reg, tmp)
+                        self.free_tmp()
                     case _: raise Exception(f'oh nyo :3')
             
             case 'call':
@@ -269,21 +286,41 @@ def format_code(ir_code):
 
 def compile(code):
     program, names = orc_parser.parser(code).program()
+    program = ast_optimizer.optimise(code)
     ir_compiler = ir(names)
     ret = ir_compiler.function_list(program)
+    print()
+    print()
+    print(program)
     return ret, {i[0]: len(i[1]) for i in ir_compiler.fn_table.values()}
 
     
 if __name__ == '__main__':
-    code = """
+    code = code = """
 fn fibo x: {
     if x < 2 return x;
-    return fibo(x - 1) + fibo(x - 2);
+    return fibo(x - 2) + fibo(x - 1);
+}
+fn is_prime num: {
+    if num < 2 return false;
+    let a = 2;
+    while a < num / 2 {
+        if num % a == 0 return false;
+        a = a + 1;
+    }
+    return true;
+}
+fn power a, b: {
+    if b == 0 return 1;
+    let pow_tmp = power(a, b / 2);
+    let remainder_tmp = 1;
+    if b % 2 == 1 remainder_tmp = a;
+    return pow_tmp * pow_tmp * remainder_tmp;
 }
 fn main: {
-    fibo(25);
+    fibo(15);
+    return (power(2, 62) - 1) * 2 + 1 + 1;
 }
-fn abc a, b, c, d:;
 """
     code, funcs = compile(code)
     print(funcs, '\n\n')

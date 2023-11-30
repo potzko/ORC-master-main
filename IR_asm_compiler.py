@@ -7,6 +7,10 @@ class compiler:
         self.state = {}
 
         self.Mov = self._construct('mov', 2)
+        self.Lea = self._construct('lea', 2)
+        self.Deref = lambda a, b: f'mov {a}, [{b}]\n'
+        self.Write = lambda a, b: f'mov [{a}], {b}\n'
+
         self.Add = self._construct('add', 2)
         self.Sub = self._construct('sub', 2)
         self.Or = self._construct('or', 2)
@@ -30,6 +34,7 @@ class compiler:
         self.Call = self._construct('call', 1)
 
         self.Ret = self._construct('ret', 0)
+        self.Nop = self._construct('nop', 0)
 
 
     def _construct(self, st, val_count):
@@ -50,11 +55,11 @@ class compiler:
         return self.get(var)
 
     def free_all_reg(self):
-        self.regs = ['r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15', 'rbx']
+        self.regs = ['r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15', 'rbx', 'rcx']
         self.state = {}
     
     def input_regs(self, num):
-        return ['rcx', 'rdx', 'rd8', 'rd9'][:num]
+        return ['rcx', 'rdx', 'r8', 'r9'][:num]
 
     def aloc_reg(self):
         return self.regs.pop()
@@ -70,7 +75,6 @@ class compiler:
         for line in lines:
             tmp = line.split(' ')
             op, data = tmp[0], tmp[1:]
-            print(line, '\n', self.state, '\n', self.regs)
             match op:
                 case 'proc':
                     self.free_all_reg()
@@ -84,8 +88,19 @@ class compiler:
                     ret += self.Pop('rbx')
                     ret += f'{data[0]} endp\n'
                     self.free_all_reg()
+                case 'nop':
+                    ret += self.Nop()
                 case 'jmp':
                     ret += f'jmp {data[0]}\n'
+                case 'lea':
+                    a, b = self.assign(data[0]), self.assign(data[1])
+                    ret += self.Lea(a, b)
+                case 'read':
+                    a, b = self.assign(data[0]), self.assign(data[1])
+                    ret += self.Deref(a, b)
+                case 'write':
+                    a, b = self.assign(data[0]), self.assign(data[1])
+                    ret += self.Write(a, b)
                 case 'mov':
                     a, b = self.assign(data[0]), self.assign(data[1])
                     ret += self.Mov(a, b)
@@ -164,7 +179,7 @@ class compiler:
                     ret += self.Jnz(data[1])
                 case 'ret':
                     print('ret not implemented!')
-                    ret += self.Mov('rax', self.get(data[0]))
+                    ret += self.Mov('rax', self.assign(data[0]))
                     ret += self.Pop('rbx')
                     ret += self.Ret()
                 case 'fcall':
@@ -178,7 +193,7 @@ class compiler:
                     for i in reversed(regs):
                         ret += self.Pop(i)
                     ret += self.Mov(self.assign(ret_reg), 'rax')
-                    print(regs)
+                    print(regs)                    
                 case _:
                     if len(op) != 0:
                         match op[0]:
@@ -186,6 +201,8 @@ class compiler:
                                 ret += f'{op}:\n'
                             case 'nop':
                                 ret += 'nop\n'
+                            case _:
+                                raise Exception(f'{op} not supported yet')
                     else:
                         raise Exception(f'{op} not supported yet')
         ret += 'END'
@@ -220,7 +237,55 @@ fn power a, b: {
     if b % 2 == 1 remainder_tmp = a;
     return pow_tmp * pow_tmp * remainder_tmp;
 }
+fn read_a arr, len: {
+    while len > 0 {
+        len = len - 1;
+        let tmp = ind(arr, len);
+        tmp := len;
+    }
+    return 0;
+}
+fn ind a, b: return a + 8 * b;
+fn slow_sort arr, len: {
+    if len < 2 return 0;
+    slow_sort(ind(arr, 1), len - 1);
+    if compare(arr, 1, 0) {
+        swap(arr, 0, 1);
+        slow_sort(ind(arr, 1), len - 1);
+    }
+    return 0;
+}
+fn swap arr, a, b: {
+    let tmp_a = *ind(arr, a);
+    let tmp_ind = ind(arr, a);
+    tmp_ind := *ind(arr, b);
+    tmp_ind = ind(arr, b);
+    tmp_ind := tmp_a;
+    return 0;
+}
+fn compare arr, a, b: {
+    let a_val = *ind(arr, a);
+    let b_val = *ind(arr, b);
+    return a_val < b_val;
+}
+fn partition arr, len: {
+    let val = *ind(arr, len - 1);
+    let i = 0;
+    let ii = 0;
+    while i < len - 1 {
+        let tmp = *ind(arr, i);
+        if compare(arr, val, tmp) {
+            swap(arr, i, ii);
+            ii = ii + 1;
+        }
+        i = i + 1;
+    }
+    swap(arr, ii, len - 1);
+    return 0;
+}
 """
+
+
 
 if __name__ == "__main__":
     tmp = compile(code)

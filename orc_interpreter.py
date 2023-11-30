@@ -1,16 +1,12 @@
 import orc_parser
+max_num = 2 ** 63
+def get_num(num):
+    num %= 2 ** 64
+    if num >= 2 ** 63:
+        num -= 2 ** 64
+    return num
 
-code = """
-fn fibo x: {
-    if x < 2 return x;
-    return fibo(x - 1) + fibo(x - 2);
-}
-fn main:
-    print(fibo(15));
-"""
 
-parser = orc_parser.parser(code)
-program, functions = parser.program()
 #print(functions)
 
 class interpreter:
@@ -18,9 +14,6 @@ class interpreter:
         self.func = {i[0][1]: [ii[1] for ii in i[1]] for i in functions}
         self.func_lookup = {i[1][1]: i[3] for i in node[1:]}
         self.inbuilt = {'print': print}
-
-    def _get_num(self, num, type = 'u8'):
-        return self.expression(('literal_num', num, type), {})
 
     def function(self, name, values):
         if name in self.inbuilt:
@@ -77,62 +70,57 @@ class interpreter:
             case 'identifier':
                 return scope[exp[1]]
             case '+':
-                return self.expression(exp[1], scope) + self.expression(exp[2], scope)
+                return get_num(self.expression(exp[1], scope) + self.expression(exp[2], scope))
             case '-':
-                return self.expression(exp[1], scope) - self.expression(exp[2], scope)
+                return get_num(self.expression(exp[1], scope) - self.expression(exp[2], scope))
             case '%':
-                return self.expression(exp[1], scope) % self.expression(exp[2], scope)
+                return get_num(self.expression(exp[1], scope) % self.expression(exp[2], scope))
             case '/':
-                return self.expression(exp[1], scope) // self.expression(exp[2], scope)
+                return get_num(self.expression(exp[1], scope) // self.expression(exp[2], scope))
             case '*':
-                return self.expression(exp[1], scope) * self.expression(exp[2], scope)
+                return get_num(self.expression(exp[1], scope) * self.expression(exp[2], scope))
             case '<':
                 return 1 if self.expression(exp[1], scope) < self.expression(exp[2], scope) else 0
+            case '>':
+                return 1 if self.expression(exp[1], scope) > self.expression(exp[2], scope) else 0
             case '<=':
                 return 1 if self.expression(exp[1], scope) <= self.expression(exp[2], scope) else 0
+            case '>=':
+                return 1 if self.expression(exp[1], scope) >= self.expression(exp[2], scope) else 0
             case '==':
                 return 1 if self.expression(exp[1], scope) == self.expression(exp[2], scope) else 0
             case 'call':
                 return self.function(exp[1], [self.expression(i, scope) for i in exp[2][1:]])
+            case 'unary_op':
+                match exp[1]:
+                    case '-':
+                        return -self.expression(exp[2], scope)
+                    case _:
+                        raise Exception(f'unary op {exp[1]} unsupported')
             case _:
                 raise Exception(f"expression error, {exp[0]} not supported")
+        
+code = """
+fn fibo x: {
+    if x < 2 return -x;
+    return fibo(x - 1) + fibo(x - 2);
+}
+fn pow a, b: {
+    if b == 0 return 1;
+    let pow_tmp = pow(a, b / 2);
+    let remainder_tmp = 1;
+    if b % 2 == 1 remainder_tmp = a;
+    return pow_tmp * pow_tmp * remainder_tmp;
+}
 
+fn main: {
+    print(fibo(15));
+    return (pow(2, 62) - 1) * 2 + 1 + 1;
+}
+"""
 
-def construct_integer_type(byte_count):
-    class ret:
-        def __init__(self, value) -> None:
-            print('init', value)
-            if type(value) != int:
-                value = value.value
-            self.size = byte_count
-            self.value = value % (2 ** byte_count)
-        
-        def __eq__(self, other) -> bool:
-            return self.value == other.value
-        def __add__(self, other):
-            if self.size < other.size:
-                return other + self
-            return ret(self.value + other.value)
-        def __sub__(self, other):
-            if self.size < other.size:
-                return other - self
-            return ret(self.value - other.value)
-        def __mul__(self, other):
-            if self.size < other.size:
-                return other * self
-            return ret(self.value * other.value)
-        def __floordiv__(self, other):
-            if self.size < other.size:
-                return other // self
-            return ret(self.value // other.value)
-        def __mod__(self, other):
-            if self.size < other.size:
-                return other % self
-            return ret(self.value % other.value)
-        def __str__(self) -> str:
-            return f'{self.value}: u{self.size}'
-    return ret
-        
-        
+parser = orc_parser.parser(code)
+program, functions = parser.program()
+
 inter = interpreter(functions, program)
 print(inter.function('main', []))
