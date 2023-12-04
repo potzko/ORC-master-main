@@ -55,7 +55,7 @@ class compiler:
         return self.get(var)
 
     def free_all_reg(self):
-        self.regs = ['r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15', 'rbx', 'rcx']
+        self.regs = ['r10', 'r11', 'r12', 'r13', 'r14', 'r15', 'r9', 'r8', 'rdx', 'rcx']
         self.state = {}
     
     def input_regs(self, num):
@@ -72,7 +72,7 @@ class compiler:
         ret = '.code\n'
         proc = None
         lines = code.strip().split('\n')
-        for line in lines:
+        for ind, line in enumerate(lines):
             tmp = line.split(' ')
             op, data = tmp[0], tmp[1:]
             match op:
@@ -268,6 +268,7 @@ fn compare arr, a, b: {
     let b_val = *ind(arr, b);
     return a_val < b_val;
 }
+/*
 fn partition arr, len: {
     let val = *ind(arr, len - 1);
     let i = 0;
@@ -283,8 +284,8 @@ fn partition arr, len: {
     swap(arr, ii, len - 1);
     return 0;
 }
+*/
 """
-
 
 
 if __name__ == "__main__":
