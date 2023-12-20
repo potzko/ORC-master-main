@@ -112,7 +112,7 @@ class compiler:
         ret = '.code\n'
         proc = None
         lines = code.strip().split('\n')
-        for line in lines:
+        for ind, line in enumerate(lines):
             tmp = line.split(' ')
             op, data = tmp[0], tmp[1:]
             match op:
@@ -377,6 +377,7 @@ fn partition arr, len: {
     swap(arr, ii, len - 1);
     return 0;
 }
+*/
 """
 
 code = """
