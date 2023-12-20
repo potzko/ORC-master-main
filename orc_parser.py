@@ -190,9 +190,7 @@ class parser:
             
         
 code = """
-fn main: {
-    let a = 1 ^ 2;
-}
+1 + 2 + 4 * 4 - (5 * (2 - 1))
 """
 
 def pprint(ast):
@@ -200,5 +198,5 @@ def pprint(ast):
     print(json.dumps(ast, indent=4))
 if __name__ == '__main__':
     p = parser(code)
-    pprint(p.program()[0])
+    pprint(p.expression())
 

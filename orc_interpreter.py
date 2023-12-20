@@ -119,8 +119,9 @@ fn main: {
 }
 """
 
-parser = orc_parser.parser(code)
-program, functions = parser.program()
+if __name__ == "__main__":
+    parser = orc_parser.parser(code)
+    program, functions = parser.program()
 
-inter = interpreter(functions, program)
-print(inter.function('main', []))
+    inter = interpreter(functions, program)
+    print(inter.function('main\\', []))

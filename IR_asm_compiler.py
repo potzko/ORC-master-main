@@ -5,6 +5,7 @@ class compiler:
         self.func_signatures = func_signatures
         self.free_all_reg()
         self.state = {}
+        self.local_vals_over = 0
 
         self.Mov = self._construct('mov', 2)
         self.Lea = self._construct('lea', 2)
@@ -46,23 +47,62 @@ class compiler:
 
     def get(self, var):
         return self.state.get(var, False)
+    
+    def reversed_get(self, addres):
+        for var, addr in self.state.items():
+            if addr == addres:
+                return var
+        return False
 
     def assign(self, var):
         if var[0] != '@':
             return var
         if not self.get(var):
-            self.state[var] = self.aloc_reg()
+            if len(self.regs) > 0:
+                self.state[var] = self.aloc_reg()
+            else:
+                self.state[var] = self.aloc_mem()
+        return self.get(var)
+    
+    def assign_mem(self, var):
+        if not self.get(var):
+            self.state[var] = self.aloc_mem()
         return self.get(var)
 
+    def assign_reg(self, var):
+        a = self.assign(var)
+        if self.is_reg_name(a):
+            return (a, '')
+
+        return ('r15', self.Mov(a, 'r15'))
+
+    def is_reg_name(self, name):
+        return not '[' in name
+
+    def is_reg_var(self, var):
+        return self.get(var) and self.is_reg_name(self.get(var))
+
     def free_all_reg(self):
-        self.regs = ['r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15', 'rbx', 'rcx']
+        self.regs = self.get_valid_regs()
         self.state = {}
-    
+        self.local_vals_over = 0
+
     def input_regs(self, num):
-        return ['rcx', 'rdx', 'r8', 'r9'][:num]
+        ret = ['rcx', 'rdx', 'r8', 'r9'][:num]
+        for i in range(num - 4):
+            ret.append(f'QWORD PTR [rbp + {48 + i * 8}]')
+        return ret
+    
+    def get_valid_regs(self):
+        #return ['r14', 'r9', 'r8', 'rbx', 'rcx']
+        return ['r10', 'r11', 'r12', 'r13', 'r14', 'r9', 'r8', 'rbx', 'rcx'] 
 
     def aloc_reg(self):
         return self.regs.pop()
+    
+    def aloc_mem(self):
+        self.local_vals_over += 1
+        return f'QWORD PTR [rbp - {8 * self.local_vals_over}]'
     
     def free_reg(self, *args):
         for reg in args:
@@ -79,13 +119,22 @@ class compiler:
                 case 'proc':
                     self.free_all_reg()
                     ret += f'{data[0]} proc\n'
-                    ret += self.Push('rbx')
+                    ret += self.Push('rbp')
+                    ret += self.Mov('rbp', 'rsp')
                     proc = data[0]
-                    print(self.func_signatures[proc])
-                    for i, reg in enumerate(self.input_regs(self.func_signatures[proc])):
-                        ret += self.Mov(self.assign(f'@F{i}'), reg)
+                    input_var_count = self.func_signatures[proc]
+                    input_vars = [f'@F{i}' for i in range(input_var_count)]
+                    self.state = {var_name: var for var_name, var in zip(input_vars, self.input_regs(input_var_count))}
+                    for i in range(min(4, input_var_count)):
+                        self.aloc_reg()
+                    for i in self.get_valid_regs():
+                        ret += self.Mov(self.assign_mem(f'tmp_{i}'), i)
+                    if input_var_count >= 2:
+                        ret += self.Mov('rbx', 'rdx')
+                        print(self.state)
+                        self.state['@F1'] = 'rbx'
+
                 case 'endp':
-                    ret += self.Pop('rbx')
                     ret += f'{data[0]} endp\n'
                     self.free_all_reg()
                 case 'nop':
@@ -93,107 +142,143 @@ class compiler:
                 case 'jmp':
                     ret += f'jmp {data[0]}\n'
                 case 'lea':
-                    a, b = self.assign(data[0]), self.assign(data[1])
+                    a, fin = self.assign_reg(data[0])
+                    b = self.assign(data[1])
                     ret += self.Lea(a, b)
+                    ret += fin
                 case 'read':
-                    a, b = self.assign(data[0]), self.assign(data[1])
+                    a, fin = self.assign_reg(data[0])
+                    b = self.assign(data[1])
                     ret += self.Deref(a, b)
+                    ret += fin
                 case 'write':
-                    a, b = self.assign(data[0]), self.assign(data[1])
+                    a, fin = self.assign_reg(data[0])
+                    b = self.assign(data[1])
                     ret += self.Write(a, b)
+                    ret += fin
                 case 'mov':
-                    a, b = self.assign(data[0]), self.assign(data[1])
+                    a, fin = self.assign_reg(data[0])
+                    b = self.assign(data[1])
                     ret += self.Mov(a, b)
+                    ret += fin
                 case 'neg':
-                    a, b = self.assign(data[0]), self.assign(data[1])
+                    a, fin = self.assign_reg(data[0])
+                    b = self.assign(data[1])
                     ret += self.Mov(a, b)
                     ret += self.Neg(a)
+                    ret += fin
                 case 'boolean_not':
-                    a, b = self.assign(data[0]), self.assign(data[1])
+                    a, fin = self.assign_reg(data[0])
+                    b = self.assign(data[1])
                     ret += self.Mov(a, b)
                     ret += self.Xor(a, '1')
+                    ret += fin
                 case 'add':
-                    a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
+                    a, fin = self.assign_reg(data[0])
+                    b, c = self.assign(data[1]), self.assign(data[2])
                     ret += self.Mov(a, b)
                     ret += self.Add(a, c)
+                    ret += fin
                 case 'sub':
-                    a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
+                    a, fin = self.assign_reg(data[0])
+                    b, c = self.assign(data[1]), self.assign(data[2])
                     ret += self.Mov(a, b)
-                    ret += self.Sub(a, c)                    
+                    ret += self.Sub(a, c)
+                    ret += fin                    
                 case 'or':
-                    a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
+                    a, fin = self.assign_reg(data[0])
+                    b, c = self.assign(data[1]), self.assign(data[2])
                     ret += self.Mov(a, b)
                     ret += self.Or(a, c)
+                    ret += fin
                 case 'xor':
-                    a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
+                    a, fin = self.assign_reg(data[0])
+                    b, c = self.assign(data[1]), self.assign(data[2])
                     ret += self.Mov(a, b)
                     ret += self.Xor(a, c)
+                    ret += fin
                 case 'eq':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
-                    self.Xor('rax', 'rax')
-                    ret += self.Cmp(b, c)
+                    ret += self.Xor('rax', 'rax')
+                    ret += self.Mov('r15', b)
+                    ret += self.Cmp('r15', c)
                     ret += self.Sete('al')
                     ret += self.Mov(a, 'rax')
                 case 'g':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
                     ret += self.Xor('rax', 'rax')
-                    ret += self.Cmp(b, c)
+                    ret += self.Mov('r15', b)
+                    ret += self.Cmp('r15', c)
                     ret += self.Setg('al')
-                    ret += self.Mov(a, 'rax')                
+                    ret += self.Mov(a, 'rax')             
                 case 'ge':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
                     ret += self.Xor('rax', 'rax')
-                    ret += self.Cmp(b, c)
+                    ret += self.Mov('r15', b)
+                    ret += self.Cmp('r15', c)
                     ret += self.Setge('al')
                     ret += self.Mov(a, 'rax')
                 case 'and':
-                    a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
+                    a, fin = self.assign_reg(data[0])
+                    b, c = self.assign(data[1]), self.assign(data[2])
                     ret += self.Mov(a, b)
                     ret += self.And(a, c)
+                    ret += fin
                 case 'mul':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
-                    ret += self.Push('rdx')
+                    ret += self.Mov('r15', 'rdx')
                     ret += self.Mov('rax', b)
                     ret += self.Mul(c)
                     ret += self.Mov(a, 'rax')
-                    ret += self.Pop('rdx')
+                    ret += self.Mov('rdx', 'r15')
                 case 'div':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
-                    ret += self.Push('rdx')
+                    ret += self.Mov('r15', 'rdx')
                     ret += self.Xor('rdx', 'rdx')
                     ret += self.Mov('rax', b)
                     ret += self.Div(c)
                     ret += self.Mov(a, 'rax')
-                    ret += self.Pop('rdx')
+                    ret += self.Mov('rdx', 'r15')
                 case 'mod':
                     a, b, c = self.assign(data[0]), self.assign(data[1]), self.assign(data[2])
-                    ret += self.Push('rdx')
+                    ret += self.Mov('r15', 'rdx')
                     ret += self.Xor('rdx', 'rdx')
                     ret += self.Mov('rax', b)
                     ret += self.Div(c)
                     ret += self.Mov(a, 'rdx')
-                    ret += self.Pop('rdx')
+                    ret += self.Mov('rdx', 'r15')
                 case 'ifnz':
                     a = self.assign(data[0])
                     ret += self.Cmp(a, '0')
                     ret += self.Jnz(data[1])
                 case 'ret':
-                    print('ret not implemented!')
                     ret += self.Mov('rax', self.assign(data[0]))
-                    ret += self.Pop('rbx')
+                    for i in self.get_valid_regs():
+                        ret += self.Mov(i, self.get(f'tmp_{i}'))
+                    ret += self.Mov('rsp', 'rbp')
+                    ret += self.Pop('rbp')
                     ret += self.Ret()
                 case 'fcall':
                     ret_reg, name, inputs = data[0], data[1], data[2:] 
-                    regs = [i for i in self.state.values()]
-                    for i in regs:
-                        ret += self.Push(i)
-                    for value, target in zip([self.get(i) for i in inputs] ,self.input_regs(self.func_signatures[name])):
-                        ret += self.Mov(target, value)
+                    for i in self.input_regs(4):
+                       ret += self.Mov(self.assign_mem(f'rec_tmp_{i}'), i)
+                    stack_space_required = 8 * (self.local_vals_over + max(self.func_signatures[name] - 4, 0)) + 32
+                    ret += self.Sub('rsp', str(stack_space_required))
+                    for value, target in zip([self.get(i) for i in inputs], self.input_regs(self.func_signatures[name])):
+                        print(target)
+                        if self.is_reg_name(value) or self.is_reg_name(target):
+                            ret += self.Mov(target.replace('rbp', 'rsp'), value)
+                        else:
+                            ret += self.Mov('r15', value)
+                            ret += self.Mov(target.replace('rbp', 'rsp'), 'r15')
+                    ret += self.Add('rsp', '16')
                     ret += self.Call(name)
-                    for i in reversed(regs):
-                        ret += self.Pop(i)
+                    for i in self.input_regs(4):
+                        ret += self.Mov(i, self.get(f'rec_tmp_{i}'))
                     ret += self.Mov(self.assign(ret_reg), 'rax')
-                    print(regs)                    
+                    ret += self.Add('rsp', str(stack_space_required - 16))
+
+
                 case _:
                     if len(op) != 0:
                         match op[0]:
@@ -268,6 +353,15 @@ fn compare arr, a, b: {
     let b_val = *ind(arr, b);
     return a_val < b_val;
 }
+fn qq1 a,b,c,d,e,f,g,q: return a;
+fn qq2 a,b,c,d,e,f,g,q: return b;
+fn qq3 a,b,c,d,e,f,g,q: return c;
+fn qq4 a,b,c,d,e,f,g,q: return d;
+fn qq5 a,b,c,d,e,f,g,q: return e;
+fn qq6 a,b,c,d,e,f,g,q: return f;
+fn qq7 a,b,c,d,e,f,g,q: return g;
+fn qq8 a,b,c,d,e,f,g,h: return h;
+
 fn partition arr, len: {
     let val = *ind(arr, len - 1);
     let i = 0;
@@ -285,11 +379,34 @@ fn partition arr, len: {
 }
 """
 
-
+code = """
+fn f_0 a: return f_1(10, 11, 12, 13, a, 15, 16, 17, 18);
+fn f_1 a,b,c,d,e,f,g: return f_2(f);
+fn f_2 a: return a;
+fn count_rec x: {
+    if x < 2 return x;
+    return 2 * count_rec(x - 1);
+}
+fn fibo x: {
+    if x < 2 return x;
+    return fibo(x - 2) + fibo(x - 1);
+}
+"""
+code = """/*
+fn count_rec x: {
+    if x <= 1 return x;
+    return count_rec(x - 1) * gay(1, 2, 3, 4, 5, 6) - count_rec(0);
+}*/
+fn fibo x: {
+    if x < 2 return x;
+    return fibo(x - 1) + fibo(x - 2);
+}
+//fn gay a, b, c, d, e, f: return 2;
+"""
 
 if __name__ == "__main__":
     tmp = compile(code)
-    print('\n\n\n')
-    print(tmp)
+    #print('\n\n\n')
+    #print(tmp)
     import pyperclip
     pyperclip.copy(tmp)

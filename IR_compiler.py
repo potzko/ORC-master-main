@@ -138,7 +138,7 @@ class ir:
     
 
     def expression(self, output_reg, exp, scope) -> None:
-        if len(exp) == 0:
+        if exp == None or len(exp) == 0:
             return self.Nop()
         ret = ''
         match exp[0]:
@@ -289,9 +289,6 @@ def compile(code):
     program = ast_optimizer.optimise(code)
     ir_compiler = ir(names)
     ret = ir_compiler.function_list(program)
-    print()
-    print()
-    print(program)
     return ret, {i[0]: len(i[1]) for i in ir_compiler.fn_table.values()}
 
     
@@ -304,7 +301,7 @@ fn fibo x: {
 fn is_prime num: {
     if num < 2 return false;
     let a = 2;
-    while a < num / 2 {
+    while a * 2 <= num {
         if num % a == 0 return false;
         a = a + 1;
     }

@@ -3,8 +3,10 @@ import orc_parser
 class ast_optimiser:
     def __init__(self, code) -> None:
         parser = orc_parser.parser(code)
-        program, functions = parser.program()
-        self.interpreter = orc_interpreter.interpreter(functions, program)
+        program, self.functions = parser.program()
+        print(self.functions)
+        self.interpreter = orc_interpreter.interpreter(self.functions, program)
+        self.pure = {}
 
     def cull(self, tree):
         return ['literal_num', self.interpreter.expression(tree, {})]
@@ -13,7 +15,6 @@ class ast_optimiser:
         if not tree:
             return False
         primary, rest = tree[0], tree[1:]
-        print(primary, rest)
         match primary:
             case 'fn_block' | 'statement_list' | 'if' | 'while' | 'return':
                 for ind, val in enumerate(rest):
@@ -95,7 +96,8 @@ fn tetrate a,b: {
 fn main:
     return tetrate(2, 4) - 1;
 """
-optimise(code)
+if __name__ == "__main__":
+    optimise(code)
 
 
 
