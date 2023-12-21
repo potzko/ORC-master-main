@@ -336,15 +336,6 @@ fn swap arr, a, b: {
     tmp_ind := tmp_a;
     return 0;
 }
-fn while_test: {
-    let i = 0;
-    let b = 1;
-    while i < 10 {
-        i = i + 1;
-        b = b * 2;
-    }
-    return b;
-}
 fn partition arr, len: {
     let pivot = read(arr, len - 1);
     let i = 0;

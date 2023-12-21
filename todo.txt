@@ -1,9 +1,9 @@
 big:
-IR_asm_compiler: add support for use of stack for functions with large register counts
+implement temp variable counting to avoid saving all registers to stack incase I don't need to
+implement external functions
 ast_optimizer: check for pure functions and run them at compile time
 IR_compiler: -> create an IR optimizer, remove copys as a start
-IR_asm_compiler: add some conditional asm generation, and a few more supported functions
 IR_asm_compiler: -> create a small asm optimizer
 
 small:
-minor refactor to use enums rather then strings
+refactor to use enums rather then strings
