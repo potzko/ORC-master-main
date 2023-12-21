@@ -1,6 +1,7 @@
 this is a small compiler I wrote
 all code goes in functions, all assignments are to variables.
 all variables are signed 64 bit numbers (long long, or i64)
+the compiler outputs masm x64 asm code
 here is a sample implemantation of quick sort:
 fn ind a, b: return a + 8 * b;
 fn cmp_lt arr, a, b: {
