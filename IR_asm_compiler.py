@@ -310,24 +310,13 @@ def compile(code):
 
 code = """
 fn ind a, b: return a + 8 * b;
+
 fn cmp_lt arr, a, b: {
     let a_val = *ind(arr, a);
     let b_val = *ind(arr, b);
     return a_val < b_val;
 }
-fn cmp_le arr, a, b: {
-    let a_val = *ind(arr, a);
-    let b_val = *ind(arr, b);
-    return a_val <= b_val;
-}
-fn read arr, index: {
-    return *ind(arr, index);
-}
-fn write arr, index, value: {
-    let mem_slot = ind(arr, index);
-    mem_slot := value;
-    return 0;
-}
+
 fn swap arr, a, b: {
     let tmp_a = *ind(arr, a);
     let tmp_ind = ind(arr, a);
@@ -336,8 +325,9 @@ fn swap arr, a, b: {
     tmp_ind := tmp_a;
     return 0;
 }
+
 fn partition arr, len: {
-    let pivot = read(arr, len - 1);
+    let pivot = *ind(arr, len - 1);
     let i = 0;
     let small_ind = 0;
     while i < len - 1 {
@@ -350,6 +340,7 @@ fn partition arr, len: {
     swap(arr, len - 1, small_ind);
     return small_ind;
 }
+
 fn quick_sort arr, len: {
     if len < 2 {
         return 0;

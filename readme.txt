@@ -3,25 +3,18 @@ all code goes in functions, all assignments are to variables.
 all variables are signed 64 bit numbers (long long, or i64)
 the compiler outputs masm x64 asm code
 here is a sample implemantation of quick sort:
+
+//all variables are 8 bytes, so (a + 8 * b) would be the memory slot where a[b] would start
 fn ind a, b: return a + 8 * b;
+
+//returns 1 if arr[a] < arr[b] else 0
 fn cmp_lt arr, a, b: {
     let a_val = *ind(arr, a);
     let b_val = *ind(arr, b);
     return a_val < b_val;
 }
-fn cmp_le arr, a, b: {
-    let a_val = *ind(arr, a);
-    let b_val = *ind(arr, b);
-    return a_val <= b_val;
-}
-fn read arr, index: {
-    return *ind(arr, index);
-}
-fn write arr, index, value: {
-    let mem_slot = ind(arr, index);
-    mem_slot := value;
-    return 0;
-}
+
+//swaps inplace arr[a] and arr[b]
 fn swap arr, a, b: {
     let tmp_a = *ind(arr, a);
     let tmp_ind = ind(arr, a);
@@ -30,8 +23,11 @@ fn swap arr, a, b: {
     tmp_ind := tmp_a;
     return 0;
 }
+
+//places the last element of the array in it's sorted index
+//all smaller element to the left of it and the larger elements to the right of it
 fn partition arr, len: {
-    let pivot = read(arr, len - 1);
+    let pivot = *ind(arr, len - 1);
     let i = 0;
     let small_ind = 0;
     while i < len - 1 {
@@ -44,6 +40,9 @@ fn partition arr, len: {
     swap(arr, len - 1, small_ind);
     return small_ind;
 }
+
+//gets a sequantal memory slice and a length
+//sorts the slice
 fn quick_sort arr, len: {
     if len < 2 {
         return 0;
