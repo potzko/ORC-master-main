@@ -3,7 +3,7 @@ import ast_optimizer
 
 class ir:
     def __init__(self, fn_names) -> None:
-        self.tmp_count = -1
+        self.tmp_count = 0
         self.lable_count = 0
         self.Mov = self._construct('mov', 2)
         self.Lea = self._construct('lea', 2)
@@ -131,8 +131,7 @@ class ir:
                 ret += self.Ret(tmp)
 
             case  _:
-                ret += self.expression('@0' ,node, scope)
-                self.free_tmp()
+                ret += self.expression('@_0' ,node, scope)
 
         return ret
     
@@ -286,10 +285,11 @@ def format_code(ir_code):
 
 def compile(code):
     program, names = orc_parser.parser(code).program()
-    program = ast_optimizer.optimise(code)
+    #program = ast_optimizer.optimise(code)
     ir_compiler = ir(names)
     ret = ir_compiler.function_list(program)
-    return ret, {i[0]: len(i[1]) for i in ir_compiler.fn_table.values()}
+    tmp = '\n'.join(f'{a} {len(b)}' for a, b in ir_compiler.fn_table.values())
+    return tmp + '\n\n' + ret
 
     
 if __name__ == '__main__':
@@ -319,6 +319,5 @@ fn main: {
     return (power(2, 62) - 1) * 2 + 1 + 1;
 }
 """
-    code, funcs = compile(code)
-    print(funcs, '\n\n')
+    code = compile(code)
     print(code)

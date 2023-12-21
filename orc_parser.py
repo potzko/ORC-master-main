@@ -31,7 +31,7 @@ class parser:
         name = self.identifier()
         if self.lookahead[0] == ':':
             self.eat(':')
-            return ['fn', name, tuple(), self.statement()]
+            return ['fn', name, [], self.statement()]
         delimiter  = ':'
         if self.lookahead[0] == '(':
             self.eat('(')

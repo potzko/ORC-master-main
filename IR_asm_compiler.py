@@ -1,8 +1,8 @@
 import IR_compiler
 
 class compiler:
-    def __init__(self, func_signatures) -> None:
-        self.func_signatures = func_signatures
+    def __init__(self) -> None:
+        self.func_signatures = {}
         self.free_all_reg()
         self.state = {}
         self.local_vals_over = 0
@@ -37,6 +37,11 @@ class compiler:
         self.Ret = self._construct('ret', 0)
         self.Nop = self._construct('nop', 0)
 
+    def get_signatures(self, header):
+        for i in header.split('\n'):
+            name, count =  i.split(' ')[0:2]
+            count = int(count)
+            self.func_signatures[name] = count
 
     def _construct(self, st, val_count):
         def ret(*args):
@@ -131,7 +136,6 @@ class compiler:
                         ret += self.Mov(self.assign_mem(f'tmp_{i}'), i)
                     if input_var_count >= 2:
                         ret += self.Mov('rbx', 'rdx')
-                        print(self.state)
                         self.state['@F1'] = 'rbx'
 
                 case 'endp':
@@ -149,12 +153,14 @@ class compiler:
                 case 'read':
                     a, fin = self.assign_reg(data[0])
                     b = self.assign(data[1])
-                    ret += self.Deref(a, b)
+                    ret += self.Mov('rax', b)
+                    ret += self.Deref(a, 'rax')
                     ret += fin
                 case 'write':
                     a, fin = self.assign_reg(data[0])
                     b = self.assign(data[1])
-                    ret += self.Write(a, b)
+                    ret += self.Mov('rax', b)
+                    ret += self.Write(a, 'rax')
                     ret += fin
                 case 'mov':
                     a, fin = self.assign_reg(data[0])
@@ -265,7 +271,6 @@ class compiler:
                     stack_space_required = 8 * (self.local_vals_over + max(self.func_signatures[name] - 4, 0)) + 32
                     ret += self.Sub('rsp', str(stack_space_required))
                     for value, target in zip([self.get(i) for i in inputs], self.input_regs(self.func_signatures[name])):
-                        print(target)
                         if self.is_reg_name(value) or self.is_reg_name(target):
                             ret += self.Mov(target.replace('rbp', 'rsp'), value)
                         else:
@@ -294,50 +299,33 @@ class compiler:
         return ret
                     
 def compile(code):
-    ir_code, funcs = IR_compiler.compile(code)
-    print(IR_compiler.format_code(ir_code))
+    a = IR_compiler.compile(code).split('\n\n')
+    header, ir_code = a[0], a[1]
+    #print(ir_code)
     #print(funcs)
-    comp = compiler(funcs)
+    comp = compiler()
+    comp.get_signatures(header)
     return comp.compile(ir_code)
 
 
 code = """
-fn fibo x: {
-    if x < 2 return x;
-    return fibo(x - 2) + fibo(x - 1);
-}
-fn is_prime num: {
-    if num < 2 return false;
-    let a = 2;
-    while a < num / 2 {
-        if num % a == 0 return false;
-        a = a + 1;
-    }
-    return true;
-}
-fn power a, b: {
-    if b == 0 return 1;
-    let pow_tmp = power(a, b / 2);
-    let remainder_tmp = 1;
-    if b % 2 == 1 remainder_tmp = a;
-    return pow_tmp * pow_tmp * remainder_tmp;
-}
-fn read_a arr, len: {
-    while len > 0 {
-        len = len - 1;
-        let tmp = ind(arr, len);
-        tmp := len;
-    }
-    return 0;
-}
 fn ind a, b: return a + 8 * b;
-fn slow_sort arr, len: {
-    if len < 2 return 0;
-    slow_sort(ind(arr, 1), len - 1);
-    if compare(arr, 1, 0) {
-        swap(arr, 0, 1);
-        slow_sort(ind(arr, 1), len - 1);
-    }
+fn cmp_lt arr, a, b: {
+    let a_val = *ind(arr, a);
+    let b_val = *ind(arr, b);
+    return a_val < b_val;
+}
+fn cmp_le arr, a, b: {
+    let a_val = *ind(arr, a);
+    let b_val = *ind(arr, b);
+    return a_val <= b_val;
+}
+fn read arr, index: {
+    return *ind(arr, index);
+}
+fn write arr, index, value: {
+    let mem_slot = ind(arr, index);
+    mem_slot := value;
     return 0;
 }
 fn swap arr, a, b: {
@@ -348,61 +336,38 @@ fn swap arr, a, b: {
     tmp_ind := tmp_a;
     return 0;
 }
-fn compare arr, a, b: {
-    let a_val = *ind(arr, a);
-    let b_val = *ind(arr, b);
-    return a_val < b_val;
-}
-fn qq1 a,b,c,d,e,f,g,q: return a;
-fn qq2 a,b,c,d,e,f,g,q: return b;
-fn qq3 a,b,c,d,e,f,g,q: return c;
-fn qq4 a,b,c,d,e,f,g,q: return d;
-fn qq5 a,b,c,d,e,f,g,q: return e;
-fn qq6 a,b,c,d,e,f,g,q: return f;
-fn qq7 a,b,c,d,e,f,g,q: return g;
-fn qq8 a,b,c,d,e,f,g,h: return h;
-
-fn partition arr, len: {
-    let val = *ind(arr, len - 1);
+fn while_test: {
     let i = 0;
-    let ii = 0;
+    let b = 1;
+    while i < 10 {
+        i = i + 1;
+        b = b * 2;
+    }
+    return b;
+}
+fn partition arr, len: {
+    let pivot = read(arr, len - 1);
+    let i = 0;
+    let small_ind = 0;
     while i < len - 1 {
-        let tmp = *ind(arr, i);
-        if compare(arr, val, tmp) {
-            swap(arr, i, ii);
-            ii = ii + 1;
+        if cmp_lt(arr, i, len - 1) {
+            swap(arr, i, small_ind);
+            small_ind = small_ind + 1;
         }
         i = i + 1;
     }
-    swap(arr, ii, len - 1);
+    swap(arr, len - 1, small_ind);
+    return small_ind;
+}
+fn quick_sort arr, len: {
+    if len < 2 {
+        return 0;
+    }
+    let split = partition(arr, len);
+    quick_sort(arr, split);
+    quick_sort(ind(arr, split + 1), len - split - 1);
     return 0;
 }
-*/
-"""
-
-code = """
-fn f_0 a: return f_1(10, 11, 12, 13, a, 15, 16, 17, 18);
-fn f_1 a,b,c,d,e,f,g: return f_2(f);
-fn f_2 a: return a;
-fn count_rec x: {
-    if x < 2 return x;
-    return 2 * count_rec(x - 1);
-}
-fn fibo x: {
-    if x < 2 return x;
-    return fibo(x - 2) + fibo(x - 1);
-}
-"""
-code = """/*
-fn count_rec x: {
-    if x <= 1 return x;
-    return count_rec(x - 1) * gay(1, 2, 3, 4, 5, 6) - count_rec(0);
-}*/
-fn fibo x: {
-    if x < 2 return x;
-    return fibo(x - 1) + fibo(x - 2);
-}
-//fn gay a, b, c, d, e, f: return 2;
 """
 
 if __name__ == "__main__":
