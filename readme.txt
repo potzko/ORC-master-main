@@ -2,6 +2,12 @@ this is a small compiler I wrote
 all code goes in functions, all assignments are to variables.
 all variables are signed 64 bit numbers (long long, or i64)
 the compiler outputs masm x64 asm code
+there is no main function, you need to call the functions from another languadge in some way
+I use C windows calling conventions
+manipulating mem is done like this:
+*var     -> deref the variable
+a := b   -> [a] = b
+&var     -> ref the variable
 here is a sample implemantation of quick sort:
 
 //all variables are 8 bytes, so (a + 8 * b) would be the memory slot where a[b] would start
