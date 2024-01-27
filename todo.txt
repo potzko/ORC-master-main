@@ -1,9 +1,11 @@
-big:
-implement temp variable counting to avoid saving all registers to stack incase I don't need to
-implement external functions
-ast_optimizer: check for pure functions and run them at compile time
-IR_compiler: -> create an IR optimizer, remove copys as a start
-IR_asm_compiler: -> create a small asm optimizer
+important additions:
 
-small:
-refactor to use enums rather then strings
+Implement temporary variable counting to avoid saving all registers to the stack in case I don't need to when I call a function.
+Implement external function calls (mostly for free and malloc).
+AST optimizer: Check for pure functions and run them at compile time.
+Constant fold more aggressively (transitive operations come to mind).
+IR compiler: Create an IR optimizer, remove extra temporary variables as a start.
+IR asm compiler: Create a small ASM optimizer (pinhole optimizations look like a good start).
+
+Small additions:
+Refactor to use enums rather than strings.
